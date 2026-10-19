@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>রাষ্ট্রের তিন আয়না — PWA Reader & Audiobook</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#d97706">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { bengali: ['"Hind Siliguri"', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; transition: background-color 0.25s, color 0.25s; }
+        .theme-sepia { background-color: #f7f1e3 !important; color: #433422 !important; }
+        .theme-sepia .card-box { background-color: #ede3ce !important; border-color: #dcd0b8 !important; }
+        .progress-indicator { transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body class="bg-stone-100 text-stone-900 dark:bg-stone-950 dark:text-stone-100 min-h-screen flex flex-col justify-between">
+
+    <!-- Progress Indicator Bar -->
+    <div class="fixed top-0 left-0 w-full h-1 bg-stone-300 dark:bg-stone-800 z-50">
+        <div id="topProgressBar" class="h-full bg-amber-600 progress-indicator w-0"></div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-40 bg-white/95 dark:bg-stone-900/95 backdrop-blur border-b border-stone-200 dark:border-stone-800 px-4 py-3">
+        <div class="max-w-3xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 transition" title="সূচিপত্র খুলুন">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+                </button>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg text-amber-700 dark:text-amber-500 tracking-tight leading-tight">রাষ্ট্রের তিন আয়না</h1>
+                    <p id="chapPerspectiveMeta" class="text-xs text-stone-500 dark:text-stone-400">পার্ট এ: মানুষের চোখে</p>
+                </div>
+            </div>
+
+            <!-- Header Controls: Audio & Theme -->
+            <div class="flex items-center gap-2">
+                <button onclick="toggleAudio()" id="audioBtn" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-sm transition">
+                    <span id="audioIcon">▶</span> <span id="audioLabel">শুনুন</span>
+                </button>
+                <button onclick="toggleTheme()" class="p-2 rounded-lg border border-stone-300 dark:border-stone-700 text-xs hover:bg-stone-200 dark:hover:bg-stone-800 transition" title="থিম পরিবর্তন">
+                    🌓
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Drawer Navigation (Table of Contents) -->
+    <aside id="sidebarDrawer" class="fixed inset-y-0 left-0 w-80 bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out p-5 overflow-y-auto">
+        <div class="flex justify-between items-center mb-5 pb-3 border-b border-stone-200 dark:border-stone-800">
+            <div>
+                <h2 class="font-bold text-lg text-amber-600">সূচিপত্র</h2>
+                <span class="text-xs text-stone-400">২৮টি পূর্ণাঙ্গ পাঠ</span>
+            </div>
+            <button onclick="toggleSidebar()" class="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 text-xl font-bold">✕</button>
+        </div>
+        <nav id="chapterNavList" class="space-y-1 text-sm"></nav>
+    </aside>
+
+    <!-- Main Content Reader -->
+    <main class="max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 flex-1">
+        
+        <article class="bg-white dark:bg-stone-900 card-box rounded-2xl shadow-sm border border-stone-200 dark:border-stone-800 p-6 sm:p-10 mb-8 transition-colors">
+            <!-- Badges -->
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-stone-100 dark:border-stone-800">
+                <span id="tagPart" class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"></span>
+                <span id="tagVoice" class="text-xs font-medium text-stone-400"></span>
+            </div>
+
+            <!-- Title -->
+            <h2 id="viewTitle" class="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-stone-100 mb-6 leading-snug"></h2>
+
+            <!-- Retention Hook Quote -->
+            <blockquote id="viewHook" class="border-l-4 border-amber-600 pl-4 py-2.5 my-6 text-stone-600 dark:text-stone-300 italic text-base leading-relaxed bg-amber-500/5 rounded-r"></blockquote>
+
+            <!-- Chapter Main Content -->
+            <p id="viewContent" class="text-stone-800 dark:text-stone-200 text-lg leading-8 text-justify font-normal mb-8"></p>
+
+            <!-- Interactive Reflection Box (Hook) -->
+            <div class="mt-8 pt-6 border-t border-dashed border-stone-200 dark:border-stone-800 bg-amber-50/50 dark:bg-stone-950/40 p-5 rounded-xl">
+                <div class="flex items-start gap-3">
+                    <span class="text-amber-600 text-lg">💡</span>
+                    <div>
+                        <h4 class="font-bold text-sm text-stone-900 dark:text-amber-400">অধ্যায় সমাপ্তির অন্তর-জিজ্ঞাসা:</h4>
+                        <p id="viewQuestion" class="text-sm text-stone-600 dark:text-stone-400 mt-1 italic"></p>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Navigation Buttons -->
+        <div class="flex justify-between items-center max-w-2xl mx-auto pb-10">
+            <button onclick="navigateChapter(-1)" id="prevBtn" class="px-4 py-2 rounded-xl border border-stone-300 dark:border-stone-700 hover:bg-stone-200 dark:hover:bg-stone-800 text-sm font-semibold transition disabled:opacity-30">
+                ← পূর্ববর্তী
+            </button>
+            <span id="pageTracker" class="text-xs font-semibold text-stone-500">১ / ২৮</span>
+            <button onclick="navigateChapter(1)" id="nextBtn" class="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold shadow-sm transition disabled:opacity-30">
+                পরবর্তী →
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-stone-200 dark:border-stone-800 py-4 text-center text-xs text-stone-500">
+        © ২০২৬ রাষ্ট্রের তিন আয়না • অফলাইন PWA সংস্করণ
+    </footer>
+
+    <!-- App Engine Scripts -->
+    <script src="./data.js"></script>
+    <script>
+        // PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed', err));
+            });
+        }
+
+        let currentIdx = 0;
+        const themes = ['light', 'sepia', 'dark'];
+        let activeTheme = 0;
+        let isPlayingAudio = false;
+
+        // Distinct Voice Personas
+        const PERSONA_VOICE_CONFIG = {
+            citizen: { pitch: 1.15, rate: 0.95, label: "নাগরিকের কণ্ঠ (কোমল ও করুণ)" },
+            officer: { pitch: 0.90, rate: 1.00, label: "মাঠ কর্মকর্তার কণ্ঠ (প্রশাসনিক ও শান্ত)" },
+            politician: { pitch: 0.75, rate: 0.90, label: "রাজনীতিবিদের কণ্ঠ (ভারী ও প্রাজ্ঞ)" },
+            narrator: { pitch: 1.00, rate: 0.95, label: "কথকের কণ্ঠ (নিরপেক্ষ)" }
+        };
+
+        function renderChapter(index) {
+            if (index < 0 || index >= CHAPTERS_DATA.length) return;
+            currentIdx = index;
+            const item = CHAPTERS_DATA[index];
+
+            document.getElementById('chapPerspectiveMeta').innerText = item.part;
+            document.getElementById('tagPart').innerText = item.part;
+            document.getElementById('tagVoice').innerText = `দৃষ্টিভঙ্গি: ${item.character}`;
+            document.getElementById('viewTitle').innerText = item.title;
+            document.getElementById('viewHook').innerText = `"${item.hook}"`;
+            document.getElementById('viewContent').innerText = item.content;
+            document.getElementById('viewQuestion').innerText = item.question;
+            document.getElementById('pageTracker').innerText = `${index + 1} / ${CHAPTERS_DATA.length}`;
+
+            document.getElementById('prevBtn').disabled = (index === 0);
+            document.getElementById('nextBtn').disabled = (index === CHAPTERS_DATA.length - 1);
+
+            // Progress bar calculation
+            const progress = ((index + 1) / CHAPTERS_DATA.length) * 100;
+            document.getElementById('topProgressBar').style.width = progress + '%';
+
+            if (isPlayingAudio) stopSpeechAudio();
+
+            localStorage.setItem('ayna_reading_index', index);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function navigateChapter(step) {
+            renderChapter(currentIdx + step);
+        }
+
+        function populateTOC() {
+            const list = document.getElementById('chapterNavList');
+            list.innerHTML = '';
+            CHAPTERS_DATA.forEach((ch, i) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-100 dark:hover:bg-stone-800 transition text-stone-700 dark:text-stone-300 flex items-center justify-between text-xs";
+                btn.innerHTML = `<span class="truncate"><b class="text-amber-600 mr-2">${i+1}.</b> ${ch.title}</span><span class="text-[10px] text-stone-400">${ch.character}</span>`;
+                btn.onclick = () => { renderChapter(i); toggleSidebar(); };
+                list.appendChild(btn);
+            });
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebarDrawer').classList.toggle('-translate-x-full');
+        }
+
+        // Web Speech API Voice Engine
+        function toggleAudio() {
+            if (!('speechSynthesis' in window)) {
+                alert('আপনার ব্রাউজার টেক্সট-টু-স্পিচ সমর্থন করে না। ক্রোম বা সাফারি ব্যবহার করুন।');
+                return;
+            }
+            if (isPlayingAudio) {
+                stopSpeechAudio();
+            } else {
+                startSpeechAudio();
+            }
+        }
+
+        function startSpeechAudio() {
+            const ch = CHAPTERS_DATA[currentIdx];
+            const speechText = `${ch.title}। ${ch.hook}। ${ch.content}`;
+            const utterance = new SpeechSynthesisUtterance(speechText);
+            utterance.lang = 'bn-BD';
+
+            const persona = PERSONA_VOICE_CONFIG[ch.role] || PERSONA_VOICE_CONFIG.narrator;
+            utterance.pitch = persona.pitch;
+            utterance.rate = persona.rate;
+
+            const allVoices = window.speechSynthesis.getVoices();
+            const banglaVoice = allVoices.find(v => v.lang.includes('bn'));
+            if (banglaVoice) utterance.voice = banglaVoice;
+
+            utterance.onend = () => stopSpeechAudio();
+
+            window.speechSynthesis.speak(utterance);
+            isPlayingAudio = true;
+            document.getElementById('audioIcon').innerText = '⏸';
+            document.getElementById('audioLabel').innerText = 'থামান';
+        }
+
+        function stopSpeechAudio() {
+            window.speechSynthesis.cancel();
+            isPlayingAudio = false;
+            document.getElementById('audioIcon').innerText = '▶';
+            document.getElementById('audioLabel').innerText = 'শুনুন';
+        }
+
+        function toggleTheme() {
+            activeTheme = (activeTheme + 1) % themes.length;
+            const chosen = themes[activeTheme];
+            const html = document.documentElement;
+            const body = document.body;
+
+            html.classList.remove('dark');
+            body.classList.remove('theme-sepia');
+
+            if (chosen === 'dark') html.classList.add('dark');
+            if (chosen === 'sepia') body.classList.add('theme-sepia');
+        }
+
+        // Initialize application
+        populateTOC();
+        const savedLocation = parseInt(localStorage.getItem('ayna_reading_index')) || 0;
+        renderChapter(savedLocation);
+    </script>
+</body>
+</html>

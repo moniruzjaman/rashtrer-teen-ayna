@@ -1,0 +1,22 @@
+{
+  "name": "রাষ্ট্রের তিন আয়না",
+  "short_name": "তিন আয়না",
+  "description": "রাষ্ট্রকে দেখা তিন চোখে — নাগরিক, মাঠ কর্মকর্তা ও রাজনীতিবিদের দৃষ্টিতে",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0c0a09",
+  "theme_color": "#d97706",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3389/3389025.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3389/3389025.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
